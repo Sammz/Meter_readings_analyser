@@ -4,13 +4,10 @@ import helper_functions
 import re
 
 
-
-
-
 readings_file = "your_readings.txt"
 output_file = "new_analysed_readings.csv"
 
-headings = ['Date', 'Off Peak', 'Peak', 'Off Peak usage', 'Peak usage', 'Average Off Peak', 'Average Peak', 'Costs', 'Monthly cost']
+headings = ['Date', 'Off Peak', 'Peak', 'Off Peak usage', 'Peak usage', 'Average Off Peak', 'Average Peak', 'Costs', 'Monthly cost', 'Monthly cost (addition calc)']
 headings_count = len(headings)
 csv = [headings]
 
@@ -23,6 +20,7 @@ average_off_index = 5
 average_peak_index = 6
 costs_index = 7
 monthly_cost_index = 8
+mc_addition_index = 9
 
 # Octopus tariffs
 # 2024, 5, 29: [0.2987, 0.1253, 0.4839]
@@ -88,6 +86,9 @@ with open(readings_file, "r", encoding='utf-8') as f:
 # Store initial end usage stats for current month, used to calculate monthly stats
 month_end_off_usage = float(csv[1][off_index])
 month_end_peak_usage = float(csv[1][peak_index])
+
+first_month_end_off_usage_for_addition = month_end_off_usage
+first_month_end_peak_usage_for_addition = month_end_peak_usage
 
 
 # Calculate missing day statistics and their daily usage
@@ -155,13 +156,19 @@ for csv_index, day in enumerate(csv):
         october_8_off_reading = day[off_index]
         october_8_peak_reading = day[peak_index]
 
+
+
     # Calculate monthly costs on first of the month
     if day[date_index].day == 1:
         first_day_of_month = day[date_index]
         month_length = calendar.monthrange(first_day_of_month.year, first_day_of_month.month)[1]
-        day[average_off_index] = round((month_end_off_usage -  float(csv[csv_index + 1][off_index])) / month_length, 1)
+        # print(day)
+        # print(csv[csv_index + 1])
+        day[average_off_index] =  round((month_end_off_usage -  float(csv[csv_index + 1][off_index])) / month_length, 1)
         day[average_peak_index] = round((month_end_peak_usage - float(csv[csv_index + 1][peak_index])) / month_length, 1)
 
+        # print(month_end_off_usage )
+        # print(month_end_peak_usage)
 
         # our first tariff we had from May 2024
         tariff_index = 0
@@ -192,6 +199,30 @@ for csv_index, day in enumerate(csv):
 
 
 
+
+# Calculate monthly costs on first of the month with addition of all individual days (as extra check for correctness)
+for csv_index, day in enumerate(csv):
+    # Skip the header for calculating stats
+    if csv_index < 1 or csv_index == len(csv) - 1:
+        continue
+    if day[date_index].day == 1:
+        # print('---- addition check start for date: ' + str( day[date_index]))
+        first_day_of_month = day[date_index]
+        month_length = calendar.monthrange(first_day_of_month.year, first_day_of_month.month)[1]
+
+        month_total_costs = 0
+
+        for days in range(month_length):
+            month_total_costs += float(csv[csv_index - days][costs_index])
+            # print(csv[csv_index - days][date_index])
+            if float(csv[csv_index - days][off_index]) == first_month_end_off_usage_for_addition:
+                break
+
+        day[mc_addition_index] = round(month_total_costs, 2)
+
+
+
+
 helper_functions.write_to_csv_file(output_file, csv)
 
 
@@ -199,6 +230,7 @@ helper_functions.write_to_csv_file(output_file, csv)
 
 total_costs = 0
 total_monthly_costs = 0
+total_monthly_costs_addition_calc = 0
 for csv_index, day in enumerate(csv):
     # Skip the header and first reading for calculating stats
     if csv_index < 1 or csv_index == len(csv) - 1:
@@ -206,12 +238,15 @@ for csv_index, day in enumerate(csv):
 
     total_costs += float(day[costs_index])
 
+    if day[mc_addition_index] != '':
+        total_monthly_costs_addition_calc += float(day[mc_addition_index])
 
     if day[monthly_cost_index] != '':
         total_monthly_costs += float(day[monthly_cost_index])
 
 print('total costs: ' + str(round(total_costs, 2)))
-print('total monthly costs: ' + str(round(total_monthly_costs,2)))
+print('total monthly costs: ' + str(round(total_monthly_costs, 2)))
+print('total monthly costs addition calc: ' + str(round(total_monthly_costs_addition_calc, 2)))
 
 
 first_date = csv[1][date_index]
