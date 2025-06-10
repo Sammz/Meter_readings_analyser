@@ -3,6 +3,7 @@ import datetime
 from boto3.dynamodb.conditions import Key
 import os
 import traceback
+import json
 
 dynamodb = boto3.resource('dynamodb')
 meter_table = dynamodb.Table('meter_readings')
@@ -11,17 +12,19 @@ tariff_table = dynamodb.Table('tariff_info')
 
 def lambda_handler(event, context):
     try:
+        body = json.loads(event['body'])
+
         # Check for API key
-        api_key = event['api_key']
+        api_key = body['api_key']
         if api_key != os.environ.get("METER_READINGS_PROCESSOR_LAMBDA_API_KEY"):
             return {
                 'statusCode': 401,
                 'body': 'Unauthorized'
             }
 
-        current_peak = event['peak']
-        current_off_peak = event['off_peak']
-        current_date = event['date']  # Format: YYYY-MM-DD
+        current_peak = body['peak']
+        current_off_peak = body['off_peak']
+        current_date = body['date']  # Format: YYYY-MM-DD
 
         # Validate input
         if not current_date or not isinstance(current_peak, int) or not isinstance(current_off_peak, int):
@@ -54,8 +57,8 @@ def lambda_handler(event, context):
         previous_off_peak = previous_reading.get('off_peak')
         previous_date = datetime.datetime.strptime(previous_reading.get('date'), '%Y-%m-%d').date()
 
-        # Get date from string for calculations
-        current_date = datetime.datetime.strptime(event['date'], '%Y-%m-%d').date()
+        # Transform datestring to date format for calculations, has to be after querying the dynamodb tables
+        current_date = datetime.datetime.strptime(current_date, '%Y-%m-%d').date()
 
         # Calculate the difference between current and previous readings
         delta_peak_usage = current_peak - previous_peak
