@@ -37,7 +37,7 @@ def lambda_handler(event, context):
         if current_date_string == "wrong" or not isinstance(current_peak, int) or not isinstance(current_off_peak, int):
             return {
                 'statusCode': 400,
-                'body': 'Invalid input. Required: peak (integer), off_peak (integer), date (YYYY-MM-DD)'
+                'body': 'Invalid input. Required: peak (integer), off_peak (integer), valid date (YYYY-MM-DD)'
             }
 
         # Get previous reading
@@ -69,7 +69,7 @@ def lambda_handler(event, context):
         if current_peak < previous_peak or current_off_peak < previous_off_peak:
             return {
                 'statusCode': 400,
-                'body': 'One of both of the meter values are lower then the previous reading'
+                'body': 'One or both of the meter values are lower then the previous reading'
             }
 
         # Calculate the difference between current and previous readings
