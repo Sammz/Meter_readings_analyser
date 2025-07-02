@@ -17,6 +17,7 @@ response=$(curl -s -X POST $LAMBDA_URL \
   -d "{\"peak\": $PEAK, \"off_peak\": $OFF_PEAK, \"date\": \"$DATE\", \"api_key\": \"$METER_READINGS_PROCESSOR_LAMBDA_API_KEY\"}")
 
 echo "-----------------------------------"
+echo $response
 echo "$response" | jq -r 'reduce keys_unsorted[] as $k (""; . + "\($k): \(.[$k])\n")'
 echo "-----------------------------------"
 
