@@ -18,7 +18,9 @@ response=$(curl -s -X POST $LAMBDA_URL \
 
 echo "-----------------------------------"
 echo $response
-echo "$response" | jq -r 'reduce keys_unsorted[] as $k (""; . + "\($k): \(.[$k])\n")'
+echo "-----------------------------------"
+
+echo "$response" | jq -r '.body | fromjson | reduce keys_unsorted[] as $k (""; . + "\($k): \(.[$k])\n")'
 echo "-----------------------------------"
 
 
