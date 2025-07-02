@@ -12,7 +12,7 @@ PEAK=$2
 OFF_PEAK=$3
 
 # Send the request
-response=$(curl -w '\nResponse code: %{http_code}\n' -X POST $LAMBDA_URL \
+response=$(curl -s -X POST $LAMBDA_URL \
   -H "Content-Type: application/json" \
   -d "{\"peak\": $PEAK, \"off_peak\": $OFF_PEAK, \"date\": \"$DATE\", \"api_key\": \"$METER_READINGS_PROCESSOR_LAMBDA_API_KEY\"}")
 
