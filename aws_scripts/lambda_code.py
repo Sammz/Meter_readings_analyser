@@ -172,15 +172,20 @@ def lambda_handler(event, context):
         date_str_30_days_ago = (current_date - timedelta(days=29)).strftime("%Y-%m-%d")
         date_str_1_year_ago = (current_date - timedelta(days=364)).strftime("%Y-%m-%d")
         date_str_beginning_plus_1 = "2024-05-30"
+        date_str_01_of_current_month = current_date_string[:-2] + "01"
 
         cost_last_30_days, off_peak_percentage_last_30 = calculate_cost_between_current_and_past_date(body, date_str_30_days_ago, tariff)
         cost_last_year, off_peak_percentage_last_year = calculate_cost_between_current_and_past_date(body, date_str_1_year_ago, tariff)
         cost_all_time, off_peak_percentage_all_time = calculate_cost_between_current_and_past_date(body, date_str_beginning_plus_1, tariff)
+        cost_of_current_month_so_far, off_peak_percentage_current_month_so_far = calculate_cost_between_current_and_past_date(body, date_str_01_of_current_month, tariff)
 
         data = OrderedDict([
             ('peak_usage', delta_peak_usage),
             ('off_peak_usage', delta_off_peak_usage),
             ('cost', '£' + str(daily_cost)),
+            ('=', '--'),
+            ('cost_current_month', '£' + str(cost_of_current_month_so_far)),
+            ('off_peak_%_current_month', str(off_peak_percentage_current_month_so_far) + "%"),
             ('-', '--'),
             ('cost_of_last_30_days', '£' + str(cost_last_30_days)),
             ('off_peak_%_last_30', str(off_peak_percentage_last_30) + "%"),
@@ -197,7 +202,7 @@ def lambda_handler(event, context):
         for k in data.keys():
             lines.append(f"| {k:<20} | {data.get(k)!s:<8} |")
 
-        lines.append("|----------------------|----------|")
+        lines.append("|----------------------|----------|\n")
 
         markdown_table = "\n".join(lines)
 
