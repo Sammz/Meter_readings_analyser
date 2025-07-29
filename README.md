@@ -15,6 +15,13 @@ I manually read my meter each day (peak and off-peak values), then trigger a Bas
 2. Calculates daily usage and cost.
 3. Stores the processed reading in a DynamoDB table.
 4. Optionally interpolates and inserts estimated values for skipped days.
+5. Supports the following commands:
+
+- Available commands:
+- store `<date> <peak> <off_peak>`
+- delete (latest entry)
+- check (latest entry)
+- calculate (statistics)
 
 ---
 
@@ -62,7 +69,8 @@ To protect sensitive data, such as the AWS Lambda endpoint and API key, this pro
 
 1. Read my electricity meter manually.  
 2. Open Termux on my Android phone.  
-3. Run a Bash script that calls the AWS Lambda endpoint via curl, sending the current date, peak, and off-peak readings as query parameters or JSON payload.
+3. Run the send_reading.sh Bash script that calls the AWS Lambda endpoint via curl, sending the store command with current date, peak, and off-peak readings.
+
 
 ---
 
