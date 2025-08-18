@@ -12,6 +12,9 @@ dynamodb = boto3.resource('dynamodb')
 meter_table = dynamodb.Table('meter_readings')
 tariff_table = dynamodb.Table('tariff_info')
 
+# Add 2 newlines to all response bodies to avoid terminal clutter when executing send_reading.sh
+response_end = "\n\n"
+
 
 def check_latest_reading():
     latest_reading = meter_table.query(
@@ -52,7 +55,7 @@ def query_meter_table_for_lt_or_equal_to_date(date_string):
     if not len(response['Items']) == 1:
         return {
             'statusCode': 400,
-            'body': 'No reading (or previous reading) found for the supplied date'
+            'body': 'No reading (or previous reading) found for the supplied date' + response_end
         }
 
     # Extract the first item from the response
@@ -103,7 +106,7 @@ def lambda_handler(event, context):
         if api_key != os.environ.get("METER_READINGS_PROCESSOR_LAMBDA_API_KEY"):
             return {
                 'statusCode': 401,
-                'body': 'Unauthorized'
+                'body': 'Unauthorized' + response_end
             }
 
         command = body['command']
@@ -114,14 +117,14 @@ def lambda_handler(event, context):
                 delete_response = delete_latest_reading()
                 return {
                     'statusCode': 200,
-                    'body': "Deleted item: \n" + str(delete_response['Attributes'])
+                    'body': "Deleted item: \n" + str(delete_response['Attributes']) + response_end
                 }
 
             elif command == "check":
                 check_response = check_latest_reading()
                 return {
                     'statusCode': 200,
-                    'body': "Latest entry: \n" + str(check_response['Items'][0])
+                    'body': "Latest entry: \n" + str(check_response['Items'][0]) + response_end
                 }
 
             elif command == "calculate":
@@ -130,7 +133,7 @@ def lambda_handler(event, context):
             else:
                 return {
                     'statusCode': 400,
-                    'body': 'Invalid command: ' + command
+                    'body': 'Invalid command: ' + command + response_end
                 }
 
         if reading_to_store:
@@ -150,7 +153,7 @@ def lambda_handler(event, context):
             if current_date_string == "wrong" or not isinstance(current_peak, int) or not isinstance(current_off_peak, int):
                 return {
                     'statusCode': 400,
-                    'body': 'Invalid input. Required: peak (integer), off_peak (integer), valid date (YYYY-MM-DD)'
+                    'body': 'Invalid input. Required: peak (integer), off_peak (integer), valid date (YYYY-MM-DD)\n' + response_end
                 }
 
             # Get previous reading since current reading does not exist yet in the table
@@ -160,14 +163,14 @@ def lambda_handler(event, context):
             if current_date == previous_reading['date']:
                 return {
                     'statusCode': 400,
-                    'body': f'A reading on {current_date_string} has already been stored'
+                    'body': f'A reading on {current_date_string} has already been stored\n' + response_end
                 }
 
             # Check if the readings make sense
             if current_peak < previous_reading['peak'] or current_off_peak < previous_reading['off_peak']:
                 return {
                     'statusCode': 400,
-                    'body': 'One or both of the meter values are lower then the previous reading'
+                    'body': 'One or both of the meter values are lower then the previous reading' + response_end
                 }
 
             # Calculate the difference between current and previous readings
@@ -310,18 +313,18 @@ def lambda_handler(event, context):
         for k in filtered_data.keys():
             lines.append(f"| {k:<25} | {data.get(k)!s:<8} |")
 
-        lines.append("|---------------------------|----------|\n")
+        lines.append("|---------------------------|----------|")
 
         markdown_table = "\n".join(lines)
 
         return {
             'statusCode': 200,
             'headers': {'Content-Type': 'application/json'},
-            'body': markdown_table
+            'body': markdown_table + response_end
         }
 
     except Exception:
         return {
             'statusCode': 500,
-            'body': traceback.format_exc()
+            'body': traceback.format_exc() + response_end
         }
