@@ -166,11 +166,28 @@ def lambda_handler(event, context):
                     'body': f'A reading on {current_date_string} has already been stored\n' + response_end
                 }
 
-            # Check if the readings make sense
-            if current_peak < previous_reading['peak'] or current_off_peak < previous_reading['off_peak']:
+            # Check if the readings aren't too low
+            if current_peak < previous_reading['peak']:
                 return {
                     'statusCode': 400,
-                    'body': 'One or both of the meter values are lower then the previous reading' + response_end
+                    'body': 'Peak reading value is lower then the previous reading' + response_end
+                }
+            if current_off_peak < previous_reading['off_peak']:
+                return {
+                    'statusCode': 400,
+                    'body': 'Off peak reading value is lower then the previous reading' + response_end
+                }
+
+            # Check if the readings aren't absurdly high (upper limits estimated)
+            if current_peak > previous_reading['peak'] + 20:
+                return {
+                    'statusCode': 400,
+                    'body': 'Peak reading value is higher then the previous reading + 25' + response_end
+                }
+            if current_off_peak > previous_reading['off_peak'] + 50:
+                return {
+                    'statusCode': 400,
+                    'body': 'Off peak reading value is higher then the previous reading + 50' + response_end
                 }
 
             # Calculate the difference between current and previous readings
