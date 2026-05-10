@@ -49,8 +49,7 @@ def get_action_cmd(action_type):  # Matches your desired action to the library's
         if hasattr(LBCommand,
                    'START_CLEAN'): return LBCommand.START_CLEAN  # Prioritise START_CLEAN to avoid the tilt bug.
         if hasattr(LBCommand, 'AUTO_CLEAN'): return LBCommand.AUTO_CLEAN  # Alternative safe clean command.
-        if hasattr(LBCommand,
-                   'CLEANING'): return LBCommand.CLEANING  # Standard fallback (can cause the tilt bug on v1.652).
+        if hasattr(LBCommand,'CLEANING'): return LBCommand.CLEANING  # Standard fallback.
         return "cleaning"  # Raw string fallback.
     elif action_type == 'flatten':  # If we want to level...
         if hasattr(LBCommand, 'LEVELING'): return LBCommand.LEVELING
@@ -108,7 +107,7 @@ async def main():  # Defines the main continuous loop of the programme.
         print("CRITICAL ERROR: PETKIT_USERNAME or PETKIT_PASSWORD not found.")  # Warns the user of missing details.
         sys.exit(1)  # Shuts down the script immediately to prevent empty login spam.
 
-    delay_seconds = DELAY_HOURS * 3600  # Converts the 7 hours into seconds (25,200) for timer math.
+    delay_seconds = DELAY_HOURS * 3600  # Converts the hours into seconds for timer math.
 
     async with aiohttp.ClientSession() as session:  # Opens an ongoing, efficient web session.
         client = PetKitClient(USERNAME, PASSWORD, REGION, TIMEZONE, session=session)  # Logs into PetKit.
@@ -186,15 +185,14 @@ async def main():  # Defines the main continuous loop of the programme.
                             last_handled_clean = global_latest_exit  # Tricks the memory into thinking it handled this visit already.
                             last_handled_level = global_latest_exit  # Prevents unnecessary levelling.
                         else:  # If the tray is dirty and waiting to cure...
-
                             time_since = current_time - global_latest_exit  # Calculates how long it has been since the cat left.
 
-                            if time_since >= delay_seconds:  # Requirement: If more than 7 hours have elapsed...
+                            if time_since >= delay_seconds:  # Requirement: If more than the delay has elapsed...
                                 elapsed_hours = int(time_since // 3600)
                                 elapsed_minutes = int((time_since % 3600) // 60)
                                 print(
                                     f"[STARTUP] Visit was {elapsed_hours}:{elapsed_minutes:02d} ago. Clean required immediately.")  # Log immediate action.
-                            else:  # If less than 7 hours...
+                            else:  # If less than the delay hours...
                                 time_to_go = delay_seconds - time_since
                                 hours_to_go = int(time_to_go // 3600)
                                 minutes_to_go = int((time_to_go % 3600) // 60)
@@ -212,16 +210,21 @@ async def main():  # Defines the main continuous loop of the programme.
                         if last_handled_clean < global_latest_exit:  # And we haven't officially marked this bypass yet...
                             print(
                                 f"[{datetime.now().strftime('%H:%M:%S')}] A server clean is logged AFTER the last visit. Bypassing commands.")  # Log bypass.
-                        last_handled_clean = global_latest_exit  # Mark as handled to prevent timers.
-                        last_handled_level = global_latest_exit  # Mark as handled to prevent flattening.
+                            last_handled_clean = global_latest_exit  # Mark as handled to prevent timers.
+                            last_handled_level = global_latest_exit  # Mark as handled to prevent flattening.
+
+                        # THE HEARTBEAT: Prints exactly once an hour when in standby so you know it's alive.
+                        elif int(current_time) % 3600 < POLL_INTERVAL:
+                            print(
+                                f"[{datetime.now().strftime('%H:%M:%S')}] [INFO] Standby mode active. Tray is clean, waiting for cat visit.")
 
                     else:  # If the tray is dirty and needs attention...
                         time_since_exit = current_time - global_latest_exit  # Calculate exact seconds since exit.
 
-                        # REQUIREMENT: Send Clean 7 hours after the last visit.
+                        # REQUIREMENT: Send Clean 8 hours after the last visit.
                         if global_latest_exit > last_handled_clean and time_since_exit >= delay_seconds:  # If timer is up...
                             print(
-                                f"[{datetime.now().strftime('%H:%M:%S')}] 7-hour curing time complete. Preparing CLEAN...")  # Log intent.
+                                f"[{datetime.now().strftime('%H:%M:%S')}] {DELAY_HOURS}-hour curing time complete. Preparing CLEAN...")  # Log intent.
                             if await safety_check(client, puramax.id):  # REQUIREMENT: Strict live safety check.
                                 success = await send_device_command(client, puramax.id, 'clean')  # Sends the command.
                                 if success:  # If it didn't crash or get rejected...
@@ -237,7 +240,7 @@ async def main():  # Defines the main continuous loop of the programme.
                                 if success:  # If it didn't crash...
                                     last_handled_level = global_latest_exit  # Update memory so it doesn't flatten again.
 
-                        # FLOW LOGGING
+                        # FLOW LOGGING: Constantly prints the countdown on every 5 min poll when curing.
                         elif global_latest_exit <= last_handled_level:  # If it is flat, and we are just waiting...
                             time_to_go = delay_seconds - time_since_exit
                             hours_to_go = int(time_to_go // 3600)
