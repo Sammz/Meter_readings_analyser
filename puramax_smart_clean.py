@@ -239,9 +239,11 @@ async def main():  # Defines the main continuous loop of the programme.
 
                         # FLOW LOGGING
                         elif global_latest_exit <= last_handled_level:  # If it is flat, and we are just waiting...
-                            hours_left = (delay_seconds - time_since_exit) / 3600  # Calculate remaining time.
+                            time_to_go = delay_seconds - time_since_exit
+                            hours_to_go = int(time_to_go // 3600)
+                            minutes_to_go = int((time_to_go % 3600) // 60)
                             print(
-                                f"[{datetime.now().strftime('%H:%M:%S')}] Litter is currently curing. ~{hours_left:.2f} hours remaining until clean.")  # Print flow update.
+                                f"[{datetime.now().strftime('%H:%M:%S')}] Litter is currently curing. ~{hours_to_go}:{minutes_to_go:02d} remaining until clean.")  # Print flow update.
 
             except Exception as e:  # Global catch-all for any unexpected errors anywhere in the loop.
                 print(
